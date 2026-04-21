@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>App Ordem de Serviço</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <!-- CSS próprio -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="bg-gray-100 text-gray-800">
+
+  <!-- Cabeçalho -->
+  <header class="bg-blue-600 text-white p-4 shadow-md">
+  <h1 class="text-xl font-bold text-center">Ordem de Serviço</h1>
+
+  <!-- 👤 usuário logado -->
+  <p id="usuarioLogado" class="text-center text-sm mt-1"></p>
+  
+  <div class="flex justify-center mt-2">
+  <button id="btnLogout"
+    class="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded-lg text-sm shadow flex items-center gap-2">
+    
+    <i class="fa-solid fa-right-from-bracket"></i>
+    Sair
+  </button>
+</div>
+  
+</header>
+
+  <!-- Conteúdo principal -->
+  <main class="p-4">
+
+    <!-- Seção de navegação -->
+    <section aria-labelledby="menu-principal">
+
+      <h2 id="menu-principal" class="text-lg font-semibold mb-4 text-center">
+        Menu Principal
+      </h2>
+
+      <!-- Navegação -->
+      <nav>
+        <ul class="space-y-4">
+
+          <li>
+            <a href="nova-os.html" class="btn flex items-center justify-center gap-2">
+              <i class="fa fa-plus" aria-hidden="true"></i>
+              <span>Nova Ordem de Serviço</span>
+            </a>
+          </li>
+
+          <li>
+            <a href="clientes.html" class="btn flex items-center justify-center gap-2">
+              <i class="fa fa-users" aria-hidden="true"></i>
+              <span>Clientes</span>
+            </a>
+          </li>
+
+          <li>
+            <a href="lista-os.html" class="btn flex items-center justify-center gap-2">
+              <i class="fa fa-list" aria-hidden="true"></i>
+              <span>Serviços</span>
+            </a>
+          </li>
+          
+          <li>
+            <a href="dashboard.html" class="btn flex items-center justify-center gap-2">
+              <i class="fa-solid fa-gauge" aria-hidden="true"></i>
+              <span>Dashboard</span>
+            </a>
+          </li>
+
+        </ul>
+      </nav>
+
+    </section>
+
+  </main>
+
+  <!-- Rodapé -->
+  <footer class="text-center text-sm text-gray-500 p-4">
+    <p>&copy; 2026 App OS - Desenvolvido para profissionais autônomos</p>
+  </footer>
+  
+  <script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut } 
+from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAbWh3GANf73czwQiWny94LJYPqlodZjAg",
+  authDomain: "ordem-servico-app-bb6a8.firebaseapp.com",
+  projectId: "ordem-servico-app-bb6a8",
+  storageBucket: "ordem-servico-app-bb6a8.firebasestorage.app",
+  messagingSenderId: "652244504112",
+  appId: "1:652244504112:web:d68e0de5cc78245f0be7f5"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+const usuarioEl = document.getElementById("usuarioLogado");
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    // mostra nome ou email
+    usuarioEl.textContent = `Olá, ${user.displayName || user.email}`;
+  } else {
+    window.location.href = "login.html";
+  }
+});
+
+document.getElementById("btnLogout").addEventListener("click", async () => {
+  const confirmar = confirm("Deseja realmente sair?");
+  
+  if (confirmar) {
+    await signOut(auth);
+    window.location.href = "login.html";
+  }
+});
+</script>
+
+</body>
+</html>
