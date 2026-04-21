@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login</title>
+
+  <link rel="stylesheet" href="css/auth.css">
+</head>
+
+<body>
+
+<main class="auth-wrapper">
+
+  <section class="auth-card">
+
+    <header>
+      <h1>Login</h1>
+      <p>Entre com sua conta</p>
+    </header>
+
+    <!-- FORM LOGIN -->
+    <form id="formLogin">
+
+      <div class="form-group">
+        <label>Email</label>
+        <input id="email" type="email" placeholder="Seu email">
+      </div>
+
+      <div class="form-group">
+        <label>Senha</label>
+        <input id="senha" type="password" placeholder="Sua senha">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">
+          Entrar
+        </button>
+      </div>
+
+    </form>
+
+    <div class="auth-link">
+      Não tem conta? <a href="cadastro.html">Cadastrar</a>
+    </div>
+
+  </section>
+
+</main>
+
+<!-- FIREBASE LOGIN -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword } 
+from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAbWh3GANf73czwQiWny94LJYPqlodZjAg",
+  authDomain: "ordem-servico-app-bb6a8.firebaseapp.com",
+  projectId: "ordem-servico-app-bb6a8",
+  storageBucket: "ordem-servico-app-bb6a8.firebasestorage.app",
+  messagingSenderId: "652244504112",
+  appId: "1:652244504112:web:d68e0de5cc78245f0be7f5"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+document.getElementById("formLogin").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const email = document.getElementById("email").value;
+  const senha = document.getElementById("senha").value;
+
+  try {
+    await signInWithEmailAndPassword(auth, email, senha);
+
+    alert("Login realizado com sucesso!");
+    window.location.href = "index.html";
+
+  } catch (error) {
+    alert("Erro: " + error.message);
+  }
+});
+</script>
+
+</body>
+</html>
