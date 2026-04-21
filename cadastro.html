@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Criar conta</title>
+
+  <link rel="stylesheet" href="css/auth.css">
+</head>
+
+<body>
+
+<main class="auth-wrapper">
+
+  <section class="auth-card">
+
+    <header>
+      <h1>Criar conta</h1>
+      <p>Preencha seus dados</p>
+    </header>
+
+  <form id="formCadastro">
+
+  <div class="form-group">
+    <label>Nome</label>
+    <input id="nome" type="text" placeholder="Seu nome">
+  </div>
+
+  <div class="form-group">
+    <label>Email</label>
+    <input id="email" type="email" placeholder="Seu email">
+  </div>
+
+  <div class="form-group">
+    <label>Senha</label>
+    <input id="senha" type="password" placeholder="Crie uma senha">
+  </div>
+
+  <div class="form-actions">
+    <button class="btn btn-primary" type="submit">
+      Cadastrar
+    </button>
+  </div>
+
+</form>
+    <div class="auth-link">
+      Já tem conta? <a href="login.html">Entrar</a>
+    </div>
+
+  </section>
+
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { 
+  getAuth, 
+  createUserWithEmailAndPassword,
+  updateProfile
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAbWh3GANf73czwQiWny94LJYPqlodZjAg",
+  authDomain: "ordem-servico-app-bb6a8.firebaseapp.com",
+  projectId: "ordem-servico-app-bb6a8",
+  storageBucket: "ordem-servico-app-bb6a8.firebasestorage.app",
+  messagingSenderId: "652244504112",
+  appId: "1:652244504112:web:d68e0de5cc78245f0be7f5"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+document.getElementById("formCadastro").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const nome = document.getElementById("nome").value;
+  const email = document.getElementById("email").value;
+  const senha = document.getElementById("senha").value;
+
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
+
+    await updateProfile(userCredential.user, {
+      displayName: nome
+    });
+
+    alert("Conta criada com sucesso!");
+    window.location.href = "login.html";
+
+  } catch (error) {
+    alert("Erro: " + error.message);
+  }
+});
+</script>
+</body>
+
+</html>
