@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard Financeiro</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="bg-gray-100 p-4">
+
+<header class="flex justify-between items-center mb-5">
+  <a href="index.html" class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow">
+    Voltar
+  </a>
+  <h1 class="text-xl font-bold">Dashboard Financeiro</h1>
+</header>
+
+<!-- RESUMO -->
+<section class="grid grid-cols-2 gap-4 mb-6">
+
+  <article class="bg-gradient-to-r from-green-500 to-green-600 text-white p-4 rounded-xl shadow">
+    <p class="text-sm opacity-80">Total Recebido</p>
+    <h2 class="text-2xl font-bold" id="totalRecebido">R$ 0</h2>
+
+    <div class="mt-2 flex items-center gap-2">
+      <span id="crescimentoIcon" class="text-lg"></span>
+      <span id="crescimentoText" class="text-sm font-semibold"></span>
+    </div>
+  </article>
+
+  <article class="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-4 rounded-xl shadow">
+    <p class="text-sm opacity-80">Pendentes</p>
+    <h2 class="text-2xl font-bold" id="pendentes">0</h2>
+  </article>
+
+</section>
+
+<!-- FILTRO -->
+<select id="filtroPeriodo" class="mb-4 p-2 border rounded">
+  <option value="dia">Diário</option>
+  <option value="semana">Semanal</option>
+  <option value="quinzena">Quinzenal</option>
+  <option value="mes">Mensal</option>
+  <option value="ano">Anual</option>
+</select>
+
+<!-- GRÁFICOS -->
+<section class="space-y-5">
+
+  <div class="bg-white p-4 rounded-xl shadow">
+    <p class="font-semibold mb-3">Status das OS</p>
+    <canvas id="graficoPizza"></canvas>
+  </div>
+
+  <div class="bg-white p-4 rounded-xl shadow">
+    <p class="font-semibold mb-3">Faturamento</p>
+    <canvas id="graficoColuna"></canvas>
+  </div>
+
+</section>
+
+<!-- FIREBASE -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+import { getAuth, onAuthStateChanged } 
+from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
+import { query, where } 
+from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAbWh3GANf73czwQiWny94LJYPqlodZjAg",
+  authDomain: "ordem-servico-app-bb6a8.firebaseapp.com",
+  projectId: "ordem-servico-app-bb6a8",
+  storageBucket: "ordem-servico-app-bb6a8.firebasestorage.app",
+  messagingSenderId: "652244504112",
+  appId: "1:652244504112:web:d68e0de5cc78245f0be7f5"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let pizzaChart;
+let barChart;
+
+
+/* INIT */
+const auth = getAuth(app);
+
+let usuarioLogado = null;
+
+onAuthStateChanged(auth, (user) => {
+
+  if (!user) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  usuarioLogado = user;
+
+  carregarDashboard();
+});
+
+document.getElementById("filtroPeriodo").addEventListener("change", () => {
+  carregarDashboard();
+});
+
+/* DASHBOARD */
+async function carregarDashboard() {
+
+  if (!usuarioLogado) return;
+
+  const q = query(
+    collection(db, "ordens"),
+    where("uid", "==", usuarioLogado.uid)
+  );
+
+const snapshot = await getDocs(q);
+
+  const periodo = document.getElementById("filtroPeriodo").value;
+
+  const hoje = new Date();
+
+  let total = 0;
+  let abertas = 0;
+  let emAndamento = 0;
+  let concluidas = 0;
+
+  let atual = 0;
+  let anterior = 0;
+
+  const faturamento = {};
+
+  snapshot.forEach((doc) => {
+    const os = doc.data();
+
+    const status = normalizar(os.status);
+
+    if (status === "aberta") abertas++;
+    if (status === "em_andamento") emAndamento++;
+    if (status === "concluida") concluidas++;
+
+    if (status !== "concluida") return;
+
+    const valor = Number(os.valor || 0);
+    const data = os.criadoEm?.toDate?.();
+
+    if (!data) return;
+
+    total += valor;
+
+    const diff = diasEntre(hoje, data);
+
+    /* CRESCIMENTO */
+    if (periodo === "dia") {
+      if (diff === 0) atual += valor;
+      if (diff === 1) anterior += valor;
+    }
+
+    if (periodo === "semana") {
+      const s1 = Math.floor(hoje.getTime() / 604800000);
+      const s2 = Math.floor(data.getTime() / 604800000);
+
+      if (s1 === s2) atual += valor;
+      if (s1 - 1 === s2) anterior += valor;
+    }
+
+    if (periodo === "quinzena") {
+      const p1 = hoje.getDate() <= 15 ? 1 : 2;
+      const p2 = data.getDate() <= 15 ? 1 : 2;
+
+      if (p1 === p2) atual += valor;
+      else anterior += valor;
+    }
+
+    if (periodo === "mes") {
+      const m = hoje.getMonth();
+      const a = hoje.getFullYear();
+
+      const mAnt = m === 0 ? 11 : m - 1;
+      const aAnt = m === 0 ? a - 1 : a;
+
+      if (data.getMonth() === m && data.getFullYear() === a) atual += valor;
+      if (data.getMonth() === mAnt && data.getFullYear() === aAnt) anterior += valor;
+    }
+
+    if (periodo === "ano") {
+      const a = hoje.getFullYear();
+
+      if (data.getFullYear() === a) atual += valor;
+      if (data.getFullYear() === a - 1) anterior += valor;
+    }
+
+    /* FATURAMENTO */
+    const chave = gerarChave(periodo, data);
+
+    faturamento[chave] = (faturamento[chave] || 0) + valor;
+  });
+
+  const crescimento = calcularCrescimento(atual, anterior);
+
+  setCrescimentoUI(crescimento);
+
+  document.getElementById("totalRecebido").innerText = `R$ ${total.toFixed(2)}`;
+  document.getElementById("pendentes").innerText = abertas + emAndamento;
+
+  renderCharts(faturamento, abertas, emAndamento, concluidas);
+}
+
+/* ================= HELPERS ================= */
+
+function normalizar(texto) {
+  return (texto || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function diasEntre(a, b) {
+  return Math.floor((a - b) / (1000 * 60 * 60 * 24));
+}
+
+function gerarChave(periodo, data) {
+  switch (periodo) {
+    case "dia": return data.toLocaleDateString();
+    case "semana": return `Semana ${Math.ceil(data.getDate() / 7)}`;
+    case "quinzena": return data.getDate() <= 15 ? "1ª Quinzena" : "2ª Quinzena";
+    case "mes": return `${data.getMonth() + 1}/${data.getFullYear()}`;
+    case "ano": return data.getFullYear();
+  }
+}
+
+function calcularCrescimento(atual, anterior) {
+  if (anterior > 0) return ((atual - anterior) / anterior) * 100;
+  return atual > 0 ? 100 : 0;
+}
+
+/* UI crescimento mais bonito */
+function setCrescimentoUI(valor) {
+  const icon = document.getElementById("crescimentoIcon");
+  const text = document.getElementById("crescimentoText");
+
+  const positivo = valor >= 0;
+
+  icon.textContent = positivo ? "📈" : "📉";
+  text.textContent = `${positivo ? "+" : ""}${valor.toFixed(1)}%`;
+
+  text.className = positivo
+    ? "text-green-600 text-sm font-semibold"
+    : "text-red-600 text-sm font-semibold";
+}
+
+/* CHARTS */
+function renderCharts(faturamento, abertas, emAndamento, concluidas) {
+
+  if (pizzaChart) pizzaChart.destroy();
+  if (barChart) barChart.destroy();
+
+  pizzaChart = new Chart(document.getElementById("graficoPizza"), {
+    type: "pie",
+    data: {
+      labels: ["Abertas", "Em andamento", "Concluídas"],
+      datasets: [{
+        data: [abertas, emAndamento, concluidas],
+        backgroundColor: ["#ef4444", "#facc15", "#22c55e"]
+      }]
+    }
+  });
+
+  barChart = new Chart(document.getElementById("graficoColuna"), {
+    type: "bar",
+    data: {
+      labels: Object.keys(faturamento),
+      datasets: [{
+        label: "Faturamento",
+        data: Object.values(faturamento),
+        backgroundColor: "#3b82f6"
+      }]
+    }
+  });
+}
+
+</script>
+
+</body>
+</html>
