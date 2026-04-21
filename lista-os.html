@@ -140,7 +140,18 @@ if (os.status === "cancelada") {
 
     <small><b>R$:</b> ${os.valor || 0}</small><br>
 
-    <small><b>Status:</b> ${os.status || "aberta"}</small>
+    <small><b>Status:</b> ${os.status || "aberta"}</small><br>
+    
+      <!-- 👇 AQUI ENTRA A DATA -->
+    <small>
+      <b>Criada em:</b>
+      ${os.createdAt?.toDate?.().toLocaleString() || "Sem data"}
+    </small><br>
+    
+    <small>
+  <b>Concluída em:</b>
+  ${os.completedAt?.toDate?.().toLocaleString() || "—"}
+</small>
   </div>
 
   <div class="flex flex-col gap-2">
@@ -192,26 +203,35 @@ onAuthStateChanged(auth, (user) => {
 async function mudarStatus(id, statusAtual) {
 
   let novoStatus = "";
+  let updateData = {
+    status: ""
+  };
 
   if (statusAtual === "aberta") {
     novoStatus = "em_andamento";
   } 
   else if (statusAtual === "em_andamento") {
     novoStatus = "concluida";
+
+    // 🔥 aqui salva data de conclusão
+    updateData.completedAt = new Date();
+
   } 
   else {
     novoStatus = "aberta";
+
+    // opcional: se reabrir, pode limpar conclusão
+    updateData.completedAt = null;
   }
 
-  await updateDoc(doc(db, "ordens", id), {
-    status: novoStatus
-  });
+  updateData.status = novoStatus;
+
+  await updateDoc(doc(db, "ordens", id), updateData);
 
   listarOS(currentUser);
 }
 
 window.mudarStatus = mudarStatus;
-
 
 // =================FUNCAO MUDAR COR DO BOTAO================
 
@@ -241,7 +261,7 @@ async function deletarOS(id) {
   if (!confirm("Deseja excluir esta OS?")) return;
 
   await deleteDoc(doc(db, "ordens", id));
-  listarOS(currentUser);
+  listarOS(currentUser); // ⚠️ precisa do user também (já já explico)
 }
 
 window.deletarOS = deletarOS;
