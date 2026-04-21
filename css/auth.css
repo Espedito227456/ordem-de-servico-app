@@ -1,0 +1,175 @@
+/* ================= RESET ================= */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ================= BASE ================= */
+body {
+  font-family: system-ui, -apple-system, Arial, sans-serif;
+  background: linear-gradient(135deg, #0f172a, #1e3a8a);
+  min-height: 100vh;
+}
+
+/* ================= CENTRALIZAÇÃO ================= */
+.auth-wrapper {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+/* ================= CARD ================= */
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+
+  box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+}
+
+/* ================= HEADER ================= */
+.auth-card header {
+  margin-bottom: 18px;
+}
+
+.auth-card h1 {
+  font-size: 22px;
+  color: #111827;
+  margin-bottom: 6px;
+}
+
+.auth-card p {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* ================= FORM ================= */
+.form-group {
+  margin-bottom: 12px;
+}
+
+label {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 5px;
+  color: #374151;
+}
+
+/* INPUT PADRÃO */
+input {
+  width: 100%;
+  padding: 10px;
+
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+
+  font-size: 14px;
+  outline: none;
+
+  transition: 0.2s;
+  background: #fff;
+}
+
+input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.2);
+}
+
+/* ================= BOTÕES ================= */
+.form-actions {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.btn {
+  width: 100%;
+  padding: 11px;
+
+  border: none;
+  border-radius: 8px;
+
+  font-weight: 600;
+  cursor: pointer;
+
+  transition: 0.2s;
+}
+
+/* principal */
+.btn-primary {
+  background: #2563eb;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #1d4ed8;
+}
+
+/* secundário */
+.btn-secondary {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.btn-secondary:hover {
+  background: #d1d5db;
+}
+
+/* ================= LINK DE TROCA LOGIN/CADASTRO ================= */
+.auth-link {
+  text-align: center;
+  margin-top: 14px;
+
+  font-size: 13px;
+  color: #cbd5e1;
+}
+
+/* link em si */
+.auth-link a {
+  color: #93c5fd;
+  font-weight: 600;
+  text-decoration: none;
+
+  transition: 0.2s;
+  position: relative;
+}
+
+/* hover elegante */
+.auth-link a:hover {
+  color: #ffffff;
+}
+
+/* efeito de sublinhado animado */
+.auth-link a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+
+  width: 100%;
+  height: 1px;
+  background: #93c5fd;
+
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.2s ease;
+}
+
+.auth-link a:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+/* ================= FOOTER ================= */
+footer {
+  text-align: center;
+  margin-top: 15px;
+  font-size: 12px;
+  color: #cbd5e1;
+}
