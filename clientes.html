@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clientes</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="bg-gray-100 text-gray-800">
+
+  <!-- HEADER -->
+  <header class="bg-blue-600 text-white p-4 shadow-md flex items-center justify-between">
+    <a href="index.html" class="text-white">
+      <i class="fa fa-arrow-left"></i>
+    </a>
+    <h1 class="text-lg font-bold">Clientes</h1>
+    <div></div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="p-4">
+
+    <!-- FORMULÁRIO -->
+    <section aria-labelledby="form-cliente">
+
+      <h2 id="form-cliente" class="text-md font-semibold mb-3">
+        Cadastrar Cliente
+      </h2>
+
+    <form id="formCliente">
+
+        <input id="nome" class="input" placeholder="Nome do cliente" required>
+
+        <input id="telefone" class="input" placeholder="Telefone">
+
+        <input id="endereco" class="input" placeholder="Endereço">
+
+        <button type="submit" class="btn mt-2">
+          <i class="fa fa-save"></i>
+          Salvar
+        </button>
+
+      </form>
+
+    </section>
+
+    <!-- LISTA -->
+    <section aria-labelledby="lista-clientes" class="mt-6">
+
+      <h2 id="lista-clientes" class="text-md font-semibold mb-3">
+        Lista de Clientes
+      </h2>
+
+      <ul id="listaClientes"></ul>
+
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="text-center text-sm text-gray-500 p-4">
+    <p>&copy; 2026 App OS</p>
+  </footer>
+  
+  <script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  deleteDoc,
+  doc,
+  query,
+  where
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+import {
+  getAuth,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
+// ================= FIREBASE =================
+const firebaseConfig = {
+  apiKey: "AIzaSyAbWh3GANf73czwQiWny94LJYPqlodZjAg",
+  authDomain: "ordem-servico-app-bb6a8.firebaseapp.com",
+  projectId: "ordem-servico-app-bb6a8",
+  storageBucket: "ordem-servico-app-bb6a8.firebasestorage.app",
+  messagingSenderId: "652244504112",
+  appId: "1:652244504112:web:d68e0de5cc78245f0be7f5"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+let currentUser = null;
+
+console.log("🔥 Firebase pronto");
+
+// ================= AUTH =================
+onAuthStateChanged(auth, (user) => {
+  if (!user) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  currentUser = user;
+  listarClientes();
+});
+
+// ================= SALVAR =================
+async function salvarCliente(nome, telefone, endereco) {
+  await addDoc(collection(db, "clientes"), {
+    nome,
+    telefone,
+    endereco,
+    criadoEm: new Date(),
+    uid: currentUser.uid // 🔥 ESSENCIAL
+  });
+}
+
+// ================= LISTAR =================
+async function listarClientes() {
+  const lista = document.getElementById("listaClientes");
+  lista.innerHTML = "";
+
+  const q = query(
+    collection(db, "clientes"),
+    where("uid", "==", currentUser.uid)
+  );
+
+  const snapshot = await getDocs(q);
+
+  snapshot.forEach((item) => {
+    const c = item.data();
+
+    const li = document.createElement("li");
+    li.className = "p-2 bg-white mb-2 rounded shadow flex justify-between";
+
+    li.innerHTML = `
+      <div>
+        <strong>${c.nome}</strong><br>
+        <small>${c.telefone || ""}</small>
+      </div>
+
+      <button onclick="deletarCliente('${item.id}')" class="text-red-500">
+        Excluir
+      </button>
+    `;
+
+    lista.appendChild(li);
+  });
+}
+
+// ================= EXCLUIR =================
+async function deletarCliente(id) {
+  if (!confirm("Deseja excluir este cliente?")) return;
+
+  await deleteDoc(doc(db, "clientes", id));
+  listarClientes();
+}
+
+window.deletarCliente = deletarCliente;
+
+// ================= FORM =================
+document.getElementById("formCliente").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const nome = document.getElementById("nome").value;
+  const telefone = document.getElementById("telefone").value;
+  const endereco = document.getElementById("endereco").value;
+
+  await salvarCliente(nome, telefone, endereco);
+
+  e.target.reset();
+  listarClientes();
+});
+</script>
+
+  
+  
+</body>
+</html>
