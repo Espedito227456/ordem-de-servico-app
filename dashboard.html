@@ -138,6 +138,10 @@ const snapshot = await getDocs(q);
 
   snapshot.forEach((doc) => {
     const os = doc.data();
+    
+    
+    const data = os.createdAt?.toDate?.();
+const dataConclusao = os.completedAt?.toDate?.();
 
     const status = normalizar(os.status);
 
@@ -148,7 +152,6 @@ const snapshot = await getDocs(q);
     if (status !== "concluida") return;
 
     const valor = Number(os.valor || 0);
-    const data = os.criadoEm?.toDate?.();
 
     if (!data) return;
 
