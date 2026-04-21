@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nova OS</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+
+<body class="bg-gray-100">
+
+<!-- HEADER -->
+<header class="bg-blue-600 text-white p-4 flex items-center gap-3 shadow-md">
+   <a href="index.html" class="text-white">
+      <i class="fa fa-arrow-left"></i>
+    </a>
+  <h1 class="font-bold text-lg ml-10">Nova Ordem de Serviço</h1>
+</header>
+
+<!-- CONTEÚDO -->
+<main class="p-4 max-w-xl mx-auto">
+
+  <div class="bg-white p-5 rounded-xl shadow-md">
+
+   <form id="formOS">
+
+      <!-- CLIENTE -->
+      <label class="text-sm font-semibold">Cliente</label>
+      <select id="cliente" class="w-full p-3 mt-1 mb-4 border rounded-lg">
+  <option value="">Selecione um cliente</option>
+</select>
+
+      <!-- PROBLEMA -->
+      <label class="text-sm font-semibold">Título</label>
+<input id="titulo" class="border border-gray-300 p-3 w-full rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition" placeholder="Título da OS">
+      
+      <label class="text-sm font-semibold">Problema</label>
+      <textarea id="descricao" class="border border-gray-300 p-3 w-full rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition" placeholder="Ex: Tomada não funciona"></textarea>
+
+      <!-- EXECUÇÃO -->
+      <label class="text-sm font-semibold">Serviço realizado</label>
+      <textarea id="execucao" class="border border-gray-300 p-3 w-full rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition" placeholder="Ex: Troca de fiação"></textarea>
+
+      <!-- VALOR -->
+      <label class="text-sm font-semibold">Valor (R$)</label>
+      <input id="valor" type="text" class="border border-gray-300 p-3 w-full rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition" placeholder="1250.65">
+
+      <!-- BOTÃO -->
+      <button id="btnSalvar" class="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold shadow-md active:scale-95 transition">
+        Salvar Ordem de Serviço
+      </button>
+
+    </form>
+
+  </div>
+
+</main>
+
+<!-- ================= FIREBASE + JS ================= -->
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  addDoc,
+  doc,
+  getDoc,
+  updateDoc,
+  query,
+  where
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+import {
+  getAuth,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
+// 🔥 CONFIG
+const firebaseConfig = {
+  apiKey: "AIzaSyAbWh3GANf73czwQiWny94LJYPqlodZjAg",
+  authDomain: "ordem-servico-app-bb6a8.firebaseapp.com",
+  projectId: "ordem-servico-app-bb6a8",
+  storageBucket: "ordem-servico-app-bb6a8.firebasestorage.app",
+  messagingSenderId: "652244504112",
+  appId: "1:652244504112:web:d68e0de5cc78245f0be7f5"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const params = new URLSearchParams(window.location.search);
+const id = params.get("id");
+
+// 🔥 ESPERA LOGIN
+onAuthStateChanged(auth, (user) => {
+
+  if (!user) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  carregarClientes(user);
+  carregarOS(user);
+
+  const form = document.getElementById("formOS");
+
+  if (form) {
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      salvarOS(user);
+    };
+  }
+
+});
+
+
+// ================= CLIENTES =================
+async function carregarClientes(user) {
+
+  const select = document.getElementById("cliente");
+  select.innerHTML = `<option value="">Selecione um cliente</option>`;
+
+  const q = query(
+    collection(db, "clientes"),
+    where("uid", "==", user.uid)
+  );
+
+  const snapshot = await getDocs(q);
+
+  // 👇 COLOCA AQUI
+  if (snapshot.empty) {
+    const option = document.createElement("option");
+    option.textContent = "Nenhum cliente cadastrado";
+    option.disabled = true;
+    select.appendChild(option);
+    return; // 🔥 impede de continuar
+  }
+
+  // 👇 só roda se tiver clientes
+  snapshot.forEach((c) => {
+    const data = c.data();
+
+    const option = document.createElement("option");
+    option.value = data.nome;
+    option.textContent = data.nome;
+
+    select.appendChild(option);
+  });
+}
+
+
+// ================= SALVAR OS =================
+async function salvarOS(user) {
+
+  const titulo = document.getElementById("titulo").value;
+  const cliente = document.getElementById("cliente").value;
+  const descricao = document.getElementById("descricao").value;
+  const execucao = document.getElementById("execucao").value;
+  const valor = parseFloat(
+    document.getElementById("valor").value.replace(",", ".")
+  );
+
+  if (!cliente) return alert("Selecione um cliente");
+  if (!descricao.trim()) return alert("Preencha a descrição");
+
+  const dados = {
+    titulo,
+    cliente,
+    descricao,
+    execucao,
+    valor: Number(valor) || 0
+  };
+
+  const btn = document.getElementById("btnSalvar"); // 👈 AQUI
+  btn.disabled = true;
+  btn.innerText = "Salvando...";
+  
+  try {
+
+    if (id) {
+  const docRef = doc(db, "ordens", id);
+  const snapshot = await getDoc(docRef);
+
+  if (!snapshot.exists()) {
+    alert("OS não encontrada");
+    return;
+  }
+
+  // 🔒 segurança: só dono pode editar
+  if (snapshot.data().uid !== user.uid) {
+    alert("Acesso negado");
+    return;
+  }
+
+  await updateDoc(docRef, dados);
+  alert("OS atualizada!");
+}else {
+      await addDoc(collection(db, "ordens"), {
+        ...dados,
+        status: "aberta",
+        criadoEm: new Date(),
+        uid: user.uid
+      });
+      alert("OS criada!");
+    }
+
+    window.location.href = "lista-os.html";
+
+  } catch (error) {
+    console.error(error);
+    alert("Erro ao salvar OS");
+
+    // 🔄 reativa botão se der erro
+    btn.disabled = false;
+    btn.innerText = "Salvar Ordem de Serviço";
+  }
+}
+
+
+// ================= CARREGAR OS =================
+async function carregarOS(user) {
+
+  if (!id) return;
+
+  const docRef = doc(db, "ordens", id);
+  const snapshot = await getDoc(docRef);
+
+  if (!snapshot.exists()) return;
+
+  const os = snapshot.data();
+
+  // 🔒 segurança: só dono pode ver
+  if (os.uid !== user.uid) {
+    alert("Acesso negado");
+    window.location.href = "lista-os.html";
+    return;
+  }
+
+  document.getElementById("titulo").value = os.titulo || "";
+  document.getElementById("descricao").value = os.descricao || "";
+  document.getElementById("execucao").value = os.execucao || "";
+  document.getElementById("valor").value = os.valor || 0;
+
+  setTimeout(() => {
+    document.getElementById("cliente").value = os.cliente || "";
+  }, 300);
+
+  document.querySelector("h1").innerText = "Editar OS";
+}
+
+</script>
+
+</body>
+</html>
