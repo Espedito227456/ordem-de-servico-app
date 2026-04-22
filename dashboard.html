@@ -38,6 +38,15 @@
 
 </section>
 
+
+
+<section class="grid grid-cols-2 gap-4 mb-6">
+    <article class="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 rounded-xl shadow">
+  <p class="text-sm opacity-80">Tempo médio</p>
+  <h2 class="text-2xl font-bold" id="tempoMedio">0h</h2>
+</article>
+</section>
+
 <!-- FILTRO -->
 <select id="filtroPeriodo" class="mb-4 p-2 border rounded">
   <option value="dia">Diário</option>
@@ -125,12 +134,13 @@ const snapshot = await getDocs(q);
   const periodo = document.getElementById("filtroPeriodo").value;
 
   const hoje = new Date();
-
+  
+  let somaTempo = 0;
+  let qtdTempo = 0;
   let total = 0;
   let abertas = 0;
   let emAndamento = 0;
   let concluidas = 0;
-
   let atual = 0;
   let anterior = 0;
 
@@ -140,8 +150,18 @@ const snapshot = await getDocs(q);
     const os = doc.data();
     
     
-    const data = os.createdAt?.toDate?.();
-const dataConclusao = os.completedAt?.toDate?.();
+    const dataCriacao = os.createdAt?.toDate?.(); //inicio
+const dataConclusao = os.completedAt?.toDate?.(); //fim
+
+let tempo = null;
+
+  if (dataCriacao && dataConclusao) {
+    tempo = dataConclusao.getTime() - dataCriacao.getTime();
+    
+    somaTempo += tempo;
+    qtdTempo++;
+  }
+
 
     const status = normalizar(os.status);
 
@@ -153,11 +173,11 @@ const dataConclusao = os.completedAt?.toDate?.();
 
     const valor = Number(os.valor || 0);
 
-    if (!data) return;
+    if (!dataCriacao) return;
 
     total += valor;
 
-    const diff = diasEntre(hoje, data);
+    const diff = diasEntre(hoje, dataCriacao);
 
     /* CRESCIMENTO */
     if (periodo === "dia") {
@@ -167,7 +187,7 @@ const dataConclusao = os.completedAt?.toDate?.();
 
     if (periodo === "semana") {
       const s1 = Math.floor(hoje.getTime() / 604800000);
-      const s2 = Math.floor(data.getTime() / 604800000);
+      const s2 = Math.floor(dataCriacao.getTime() / 604800000);
 
       if (s1 === s2) atual += valor;
       if (s1 - 1 === s2) anterior += valor;
@@ -175,7 +195,7 @@ const dataConclusao = os.completedAt?.toDate?.();
 
     if (periodo === "quinzena") {
       const p1 = hoje.getDate() <= 15 ? 1 : 2;
-      const p2 = data.getDate() <= 15 ? 1 : 2;
+      const p2 = dataCriacao.getDate() <= 15 ? 1 : 2;
 
       if (p1 === p2) atual += valor;
       else anterior += valor;
@@ -188,19 +208,19 @@ const dataConclusao = os.completedAt?.toDate?.();
       const mAnt = m === 0 ? 11 : m - 1;
       const aAnt = m === 0 ? a - 1 : a;
 
-      if (data.getMonth() === m && data.getFullYear() === a) atual += valor;
+      if (dataCriacao.getMonth() === m && data.getFullYear() === a) atual += valor;
       if (data.getMonth() === mAnt && data.getFullYear() === aAnt) anterior += valor;
     }
 
     if (periodo === "ano") {
       const a = hoje.getFullYear();
 
-      if (data.getFullYear() === a) atual += valor;
-      if (data.getFullYear() === a - 1) anterior += valor;
+      if (dataCriacao.getFullYear() === a) atual += valor;
+      if (dataCriacao.getFullYear() === a - 1) anterior += valor;
     }
 
     /* FATURAMENTO */
-    const chave = gerarChave(periodo, data);
+    const chave = gerarChave(periodo, dataCriacao);
 
     faturamento[chave] = (faturamento[chave] || 0) + valor;
   });
@@ -213,7 +233,18 @@ const dataConclusao = os.completedAt?.toDate?.();
   document.getElementById("pendentes").innerText = abertas + emAndamento;
 
   renderCharts(faturamento, abertas, emAndamento, concluidas);
+  
+  let mediaHoras = 0;
+
+if (qtdTempo > 0) {
+  mediaHoras = somaTempo / qtdTempo / (1000 * 60 * 60);
 }
+
+document.getElementById("tempoMedio").innerText =
+  `${mediaHoras.toFixed(1)} horas`;
+}
+
+
 
 /* ================= HELPERS ================= */
 
@@ -233,9 +264,9 @@ function gerarChave(periodo, data) {
   switch (periodo) {
     case "dia": return data.toLocaleDateString();
     case "semana": return `Semana ${Math.ceil(data.getDate() / 7)}`;
-    case "quinzena": return data.getDate() <= 15 ? "1ª Quinzena" : "2ª Quinzena";
-    case "mes": return `${data.getMonth() + 1}/${data.getFullYear()}`;
-    case "ano": return data.getFullYear();
+    case "quinzena": return dataCriacao.getDate() <= 15 ? "1ª Quinzena" : "2ª Quinzena";
+    case "mes": return `${dataCriacao.getMonth() + 1}/${dataCriacao.getFullYear()}`;
+    case "ano": return dataCriacao.getFullYear();
   }
 }
 
