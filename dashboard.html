@@ -82,6 +82,18 @@ from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { query, where } 
 from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
+import { updateDoc, doc, serverTimestamp } 
+from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+async function concluirOS(id) {
+  const docRef = doc(db, "ordens", id);
+
+  await updateDoc(docRef, {
+    status: "concluida",
+    completedAt: serverTimestamp() // 🔥 ESSENCIAL
+  });
+}
+
 const firebaseConfig = {
   apiKey: "AIzaSyAbWh3GANf73czwQiWny94LJYPqlodZjAg",
   authDomain: "ordem-servico-app-bb6a8.firebaseapp.com",
@@ -122,6 +134,8 @@ document.getElementById("filtroPeriodo").addEventListener("change", () => {
 /* DASHBOARD */
 async function carregarDashboard() {
 
+  const faturamento = {};
+
   if (!usuarioLogado) return;
 
   const q = query(
@@ -144,23 +158,27 @@ const snapshot = await getDocs(q);
   let atual = 0;
   let anterior = 0;
 
-  const faturamento = {};
+ 
 
   snapshot.forEach((doc) => {
+  
     const os = doc.data();
     
+const dataCriacao = os.createdAt?.toDate
+  ? os.createdAt.toDate()
+  : os.createdAt
+    ? new Date(os.createdAt)
+    : null; //inicio
+  
+const dataConclusao = os.completedAt?.toDate
+  ? os.completedAt.toDate()
+  : os.completedAt
+    ? new Date(os.completedAt)
+    : null; //fim
     
-    const dataCriacao = os.createdAt?.toDate?.(); //inicio
-const dataConclusao = os.completedAt?.toDate?.(); //fim
-
-let tempo = null;
-
-  if (dataCriacao && dataConclusao) {
-    tempo = dataConclusao.getTime() - dataCriacao.getTime();
     
-    somaTempo += tempo;
-    qtdTempo++;
-  }
+
+    let tempo = null;
 
 
     const status = normalizar(os.status);
@@ -170,14 +188,42 @@ let tempo = null;
     if (status === "concluida") concluidas++;
 
     if (status !== "concluida") return;
+    
+    if (dataCriacao instanceof Date && dataConclusao instanceof Date) {
+
+  const tempo = dataConclusao.getTime() - dataCriacao.getTime();
+
+  if (!isNaN(tempo) && tempo > 0) {
+    somaTempo += tempo;
+    qtdTempo++;
+  }
+}
+
 
     const valor = Number(os.valor || 0);
 
-    if (!dataCriacao) return;
+   const dataBase = dataConclusao || dataCriacao;
+if (!dataBase) return;
+
+
+let dentroDoPeriodo = false;
+
+ const diff = diasEntre(hoje, dataBase);
+
+if (periodo === "dia") dentroDoPeriodo = diff === 0;
+if (periodo === "semana") dentroDoPeriodo = diff <= 7;
+if (periodo === "quinzena") dentroDoPeriodo = diff <= 15;
+if (periodo === "mes") dentroDoPeriodo = diff <= 30;
+if (periodo === "ano") dentroDoPeriodo = diff <= 365;
+
+if (!dentroDoPeriodo) return;
+
 
     total += valor;
+    
+    
 
-    const diff = diasEntre(hoje, dataCriacao);
+ 
 
     /* CRESCIMENTO */
     if (periodo === "dia") {
@@ -187,8 +233,7 @@ let tempo = null;
 
     if (periodo === "semana") {
       const s1 = Math.floor(hoje.getTime() / 604800000);
-      const s2 = Math.floor(dataCriacao.getTime() / 604800000);
-
+      const s2 = Math.floor(dataBase.getTime() / 604800000);
       if (s1 === s2) atual += valor;
       if (s1 - 1 === s2) anterior += valor;
     }
@@ -208,8 +253,8 @@ let tempo = null;
       const mAnt = m === 0 ? 11 : m - 1;
       const aAnt = m === 0 ? a - 1 : a;
 
-      if (dataCriacao.getMonth() === m && data.getFullYear() === a) atual += valor;
-      if (data.getMonth() === mAnt && data.getFullYear() === aAnt) anterior += valor;
+      if (dataBase.getMonth() === m && dataCriacao.getFullYear() === a) atual += valor;
+      if (dataBase.getMonth() === mAnt && dataCriacao.getFullYear() === aAnt) anterior += valor;
     }
 
     if (periodo === "ano") {
@@ -220,7 +265,7 @@ let tempo = null;
     }
 
     /* FATURAMENTO */
-    const chave = gerarChave(periodo, dataCriacao);
+    const chave = gerarChave(periodo, dataBase);
 
     faturamento[chave] = (faturamento[chave] || 0) + valor;
   });
@@ -260,13 +305,21 @@ function diasEntre(a, b) {
   return Math.floor((a - b) / (1000 * 60 * 60 * 24));
 }
 
+function getSemanaDoAno(data) {
+  const primeiroDia = new Date(data.getFullYear(), 0, 1);
+  const dias = Math.floor((data - primeiroDia) / (1000 * 60 * 60 * 24));
+  return Math.ceil((dias + primeiroDia.getDay() + 1) / 7);
+}
+
+
+
 function gerarChave(periodo, data) {
   switch (periodo) {
     case "dia": return data.toLocaleDateString();
-    case "semana": return `Semana ${Math.ceil(data.getDate() / 7)}`;
-    case "quinzena": return dataCriacao.getDate() <= 15 ? "1ª Quinzena" : "2ª Quinzena";
-    case "mes": return `${dataCriacao.getMonth() + 1}/${dataCriacao.getFullYear()}`;
-    case "ano": return dataCriacao.getFullYear();
+    case "semana": return `${data.getFullYear()} - Semana ${getSemanaDoAno(data)}`;
+    case "quinzena": return data.getDate() <= 15 ? "1ª Quinzena" : "2ª Quinzena";
+    case "mes": return `${data.getMonth() + 1}/${data.getFullYear()}`;
+    case "ano": return data.getFullYear();
   }
 }
 
@@ -307,13 +360,53 @@ function renderCharts(faturamento, abertas, emAndamento, concluidas) {
     }
   });
 
+ // 🔥 AQUI entra a ordenação (ANTES do gráfico de barras)
+
+const dadosOrdenados = Object.entries(faturamento)
+  .sort((a, b) => {
+
+    const chaveA = a[0];
+    const chaveB = b[0];
+
+    // SEMANA (formato: "2026 - Semana 16")
+    if (chaveA.includes("Semana")) {
+      const [anoA, semA] = chaveA.split(" - Semana ");
+      const [anoB, semB] = chaveB.split(" - Semana ");
+
+      return (anoA - anoB) || (semA - semB);
+    }
+
+    // MÊS (formato: "4/2026")
+    if (chaveA.includes("/")) {
+      const [mesA, anoA] = chaveA.split("/");
+      const [mesB, anoB] = chaveB.split("/");
+
+      return (anoA - anoB) || (mesA - mesB);
+    }
+
+    // ANO
+    if (!isNaN(chaveA)) {
+      return chaveA - chaveB;
+    }
+
+    // DIA (fallback)
+    const dataA = new Date(chaveA.split("/").reverse().join("-"));
+    const dataB = new Date(chaveB.split("/").reverse().join("-"));
+
+    return dataA - dataB;
+  });
+
+  const labels = dadosOrdenados.map(item => item[0]);
+  const valores = dadosOrdenados.map(item => item[1]);
+
+  // 🔥 GRÁFICO DE BARRAS (usa os dados ordenados)
   barChart = new Chart(document.getElementById("graficoColuna"), {
     type: "bar",
     data: {
-      labels: Object.keys(faturamento),
+      labels: labels,
       datasets: [{
         label: "Faturamento",
-        data: Object.values(faturamento),
+        data: valores,
         backgroundColor: "#3b82f6"
       }]
     }
