@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-gray-100 text-gray-800 hidden" id="app">
 
   <!-- Cabeçalho -->
   <header class="bg-blue-600 text-white p-4 shadow-md">
@@ -110,8 +110,9 @@ const usuarioEl = document.getElementById("usuarioLogado");
 
 onAuthStateChanged(auth, (user) => {
   if (user) {
-    // mostra nome ou email
     usuarioEl.textContent = `Olá, ${user.displayName || user.email}`;
+
+    document.getElementById("app").classList.remove("hidden"); // 🔥 mostra tudo
   } else {
     window.location.href = "login.html";
   }
