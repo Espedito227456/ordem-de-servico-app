@@ -10,6 +10,7 @@ body {
   font-family: system-ui, -apple-system, Arial, sans-serif;
   background: linear-gradient(135deg, #0f172a, #1e3a8a);
   min-height: 100vh;
+  animation: fadeBg 1s ease;
 }
 
 /* ================= CENTRALIZAÇÃO ================= */
@@ -31,6 +32,10 @@ body {
   padding: 24px;
 
   box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+  
+  opacity: 0;
+  transform: translateY(20px) scale(0.98);
+  animation: entrar 0.6s ease forwards;
 }
 
 /* ================= HEADER ================= */
@@ -78,7 +83,8 @@ input {
 
 input:focus {
   border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37,99,235,0.2);
+  box-shadow: 0 0 0 4px rgba(37,99,235,0.15);
+  transform: scale(1.02);
 }
 
 /* ================= BOTÕES ================= */
@@ -104,12 +110,14 @@ input:focus {
 
 /* principal */
 .btn-primary {
-  background: #2563eb;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
   color: white;
+  transition: 0.2s;
 }
 
 .btn-primary:hover {
-  background: #1d4ed8;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(37,99,235,0.3);
 }
 
 /* secundário */
@@ -179,9 +187,6 @@ footer {
 
 
 
-
-
-
 .input-icon {
   position: relative;
 }
@@ -200,4 +205,24 @@ footer {
   user-select: none;
   font-size: 18px;
   color: #666;
+}
+
+.eye:hover {
+  color: #2563eb;
+  transform: translateY(-50%) scale(1.1);
+}
+
+
+
+
+@keyframes entrar {
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fadeBg {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
