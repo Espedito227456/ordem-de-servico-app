@@ -7,6 +7,7 @@
   <title>Login</title>
 
   <link rel="stylesheet" href="css/auth.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 
 <body>
@@ -28,10 +29,16 @@
         <input id="email" type="email" placeholder="Seu email">
       </div>
 
-      <div class="form-group">
-        <label>Senha</label>
-        <input id="senha" type="password" placeholder="Sua senha">
-      </div>
+     <div class="form-group password-wrapper">
+  <label>Senha</label>
+
+  <div class="input-icon">
+    <input id="senha" type="password" placeholder="Sua senha">
+   <span id="toggleSenha" class="eye">
+  <i id="eyeIcon" class="fa-solid fa-eye-slash"></i>
+</span>
+  </div>
+</div>
 
       <div class="form-actions">
         <button class="btn btn-primary" type="submit">
@@ -81,6 +88,25 @@ document.getElementById("formLogin").addEventListener("submit", async (e) => {
 
   } catch (error) {
     alert("Erro: " + error.message);
+  }
+});
+
+
+const senhaInput = document.getElementById("senha");
+const toggleSenha = document.getElementById("toggleSenha");
+const eyeIcon = document.getElementById("eyeIcon");
+
+toggleSenha.addEventListener("click", () => {
+  const escondida = senhaInput.type === "password";
+
+  senhaInput.type = escondida ? "text" : "password";
+
+  if (escondida) {
+    eyeIcon.classList.remove("fa-eye-slash");
+    eyeIcon.classList.add("fa-eye");
+  } else {
+    eyeIcon.classList.remove("fa-eye");
+    eyeIcon.classList.add("fa-eye-slash");
   }
 });
 </script>
