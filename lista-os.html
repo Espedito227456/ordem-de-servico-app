@@ -58,6 +58,11 @@ from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { query, where } 
 from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
+import { serverTimestamp } 
+from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+
+
 // 🔥 CONFIG FIREBASE
 const firebaseConfig = {
   apiKey: "AIzaSyAbWh3GANf73czwQiWny94LJYPqlodZjAg",
@@ -213,14 +218,12 @@ async function mudarStatus(id, statusAtual) {
   else if (statusAtual === "em_andamento") {
     novoStatus = "concluida";
 
-    // 🔥 aqui salva data de conclusão
-    updateData.completedAt = new Date();
+    // 🔥 correto agora
+    updateData.completedAt = serverTimestamp();
 
   } 
   else {
     novoStatus = "aberta";
-
-    // opcional: se reabrir, pode limpar conclusão
     updateData.completedAt = null;
   }
 
