@@ -7,6 +7,7 @@
   <title>Criar conta</title>
 
   <link rel="stylesheet" href="css/auth.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 
 <body>
@@ -32,10 +33,16 @@
     <input id="email" type="email" placeholder="Seu email">
   </div>
 
-  <div class="form-group">
-    <label>Senha</label>
-    <input id="senha" type="password" placeholder="Crie uma senha">
+    <div class="form-group password-wrapper">
+  <label>Senha</label>
+
+  <div class="input-icon">
+    <input id="senha" type="password" placeholder="Sua senha" required>
+   <span id="toggleSenha" class="eye">
+  <i id="eyeIcon" class="fa-solid fa-eye-slash"></i>
+</span>
   </div>
+</div>
 
   <div class="form-actions">
     <button class="btn btn-primary" type="submit">
@@ -72,8 +79,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
+const botao = document.querySelector(".btn-primary");
+
 document.getElementById("formCadastro").addEventListener("submit", async (e) => {
   e.preventDefault();
+  
+  botao.innerText = "Cadastrando...";
+  botao.disabled = true;
 
   const nome = document.getElementById("nome").value;
   const email = document.getElementById("email").value;
@@ -93,6 +105,28 @@ document.getElementById("formCadastro").addEventListener("submit", async (e) => 
     alert("Erro: " + error.message);
   }
 });
+
+
+
+const senhaInput = document.getElementById("senha");
+const toggleSenha = document.getElementById("toggleSenha");
+const eyeIcon = document.getElementById("eyeIcon");
+
+toggleSenha.addEventListener("click", () => {
+  const escondida = senhaInput.type === "password";
+
+  senhaInput.type = escondida ? "text" : "password";
+
+  if (escondida) {
+    eyeIcon.classList.remove("fa-eye-slash");
+    eyeIcon.classList.add("fa-eye");
+  } else {
+    eyeIcon.classList.remove("fa-eye");
+    eyeIcon.classList.add("fa-eye-slash");
+  }
+});
+
+
 </script>
 </body>
 
