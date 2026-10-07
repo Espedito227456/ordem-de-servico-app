@@ -48,6 +48,9 @@
       <label class="text-sm font-semibold">Valor (R$)</label>
       <input id="valor" type="text" class="border border-gray-300 p-3 w-full rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition" placeholder="1250.65">
 
+      <!-- 💎 indicador de uso do limite mensal de OS do plano grátis -->
+      <p id="infoLimiteOS" class="text-xs text-gray-500 mt-2 mb-1"></p>
+
       <!-- BOTÃO -->
       <button id="btnSalvar" class="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold shadow-md active:scale-95 transition">
         Salvar Ordem de Serviço
@@ -62,10 +65,7 @@
 <!-- ================= FIREBASE + JS ================= -->
 <script type="module">
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-
 import {
-  getFirestore,
   collection,
   getDocs,
   addDoc,
@@ -76,38 +76,40 @@ import {
   where
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
+// 🔥 Firebase + sistema de planos centralizados (ver pasta js/)
+import { auth, db } from "./js/firebase.js";
 import {
-  getAuth,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-
-// 🔥 CONFIG
-const firebaseConfig = {
-  apiKey: "AIzaSyAbWh3GANf73czwQiWny94LJYPqlodZjAg",
-  authDomain: "ordem-servico-app-bb6a8.firebaseapp.com",
-  projectId: "ordem-servico-app-bb6a8",
-  storageBucket: "ordem-servico-app-bb6a8.firebasestorage.app",
-  messagingSenderId: "652244504112",
-  appId: "1:652244504112:web:d68e0de5cc78245f0be7f5"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+  garantirUsuario,
+  obterDadosUsuario,
+  verificarLimiteOs,
+  alertarLimiteAtingido
+} from "./js/plano.js";
 
 const params = new URLSearchParams(window.location.search);
 const id = params.get("id");
 
+let dadosUsuarioAtual = null; // 💎 cache do documento usuarios/{uid} (plano atual)
+
 // 🔥 ESPERA LOGIN
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
 
   if (!user) {
     window.location.href = "login.html";
     return;
   }
 
+  // 💎 garante o doc de plano e carrega os dados (idempotente)
+  await garantirUsuario(user);
+  dadosUsuarioAtual = await obterDadosUsuario(user.uid);
+
   carregarClientes(user);
   carregarOS(user);
+
+  // o limite mensal só se aplica a OS novas, então não faz sentido mostrar
+  // o indicador de uso quando a tela está em modo de edição (?id=...)
+  if (!id) atualizarInfoLimiteOS(user);
 
   const form = document.getElementById("formOS");
 
@@ -119,6 +121,17 @@ onAuthStateChanged(auth, (user) => {
   }
 
 });
+
+
+// ================= 💎 LIMITE DO PLANO GRÁTIS =================
+async function atualizarInfoLimiteOS(user) {
+  const info = document.getElementById("infoLimiteOS");
+  const { usado, limite } = await verificarLimiteOs(user.uid, dadosUsuarioAtual);
+
+  info.textContent = Number.isFinite(limite)
+    ? `${usado}/${limite} OS criadas este mês (plano grátis)`
+    : "";
+}
 
 
 // ================= CLIENTES =================
@@ -169,6 +182,18 @@ async function salvarOS(user) {
 
   if (!cliente) return alert("Selecione um cliente");
   if (!descricao.trim()) return alert("Preencha a descrição");
+
+  // 💎 limite mensal de OS do plano grátis — só vale para OS NOVA (não edição)
+  if (!id) {
+    const limite = await verificarLimiteOs(user.uid, dadosUsuarioAtual);
+
+    if (!limite.permitido) {
+      alertarLimiteAtingido(
+        `Você atingiu o limite de ${limite.limite} novas OS este mês no plano grátis.`
+      );
+      return;
+    }
+  }
 
   const dados = {
     titulo,

@@ -51,6 +51,20 @@
   </div>
 
 </form>
+
+    <!-- ================= 🔐 CADASTRO COM GOOGLE ================= -->
+    <div class="divider"><span>ou</span></div>
+
+    <button type="button" id="btnGoogleCadastro" class="btn-google">
+      <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+        <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.6-6 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.9 6.1 29.8 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.7-.4-3.5z"/>
+        <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.1 18.9 12 24 12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.9 6.1 29.8 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+        <path fill="#4CAF50" d="M24 44c5.7 0 10.8-2.2 14.6-5.8l-6.7-5.7C29.8 34.5 27 35.5 24 35.5c-5.3 0-9.7-3.4-11.3-8l-6.6 5.1C9.6 39.6 16.3 44 24 44z"/>
+        <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.3-4 5.8l6.7 5.7C41.9 36.5 44 30.9 44 24c0-1.3-.1-2.7-.4-3.5z"/>
+      </svg>
+      <span>Continuar com o Google</span>
+    </button>
+
     <div class="auth-link">
       Já tem conta? <a href="login.html">Entrar</a>
     </div>
@@ -59,25 +73,45 @@
 
 </main>
 
+<!-- ============================================================
+     👁️ TOGGLE "MOSTRAR SENHA" — script separado (NÃO é type="module")
+     de propósito: assim ele funciona sempre, mesmo se o Firebase
+     não conseguir carregar (sem internet, CDN fora do ar, ou o
+     arquivo aberto direto via file:// em vez de um servidor local).
+     Antes esse código ficava junto do script do Firebase: se o
+     módulo falhasse, o olho parava de funcionar também.
+     ============================================================ -->
+<script>
+  const senhaInput = document.getElementById("senha");
+  const toggleSenha = document.getElementById("toggleSenha");
+  const eyeIcon = document.getElementById("eyeIcon");
+
+  toggleSenha.addEventListener("click", () => {
+    const escondida = senhaInput.type === "password";
+
+    senhaInput.type = escondida ? "text" : "password";
+
+    if (escondida) {
+      eyeIcon.classList.remove("fa-eye-slash");
+      eyeIcon.classList.add("fa-eye");
+    } else {
+      eyeIcon.classList.remove("fa-eye");
+      eyeIcon.classList.add("fa-eye-slash");
+    }
+  });
+</script>
+
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { 
-  getAuth, 
+import {
   createUserWithEmailAndPassword,
-  updateProfile
+  updateProfile,
+  GoogleAuthProvider,
+  signInWithPopup
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAbWh3GANf73czwQiWny94LJYPqlodZjAg",
-  authDomain: "ordem-servico-app-bb6a8.firebaseapp.com",
-  projectId: "ordem-servico-app-bb6a8",
-  storageBucket: "ordem-servico-app-bb6a8.firebasestorage.app",
-  messagingSenderId: "652244504112",
-  appId: "1:652244504112:web:d68e0de5cc78245f0be7f5"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+// 🔥 Firebase e sistema de planos centralizados (ver js/firebase.js e js/plano.js)
+import { auth } from "./js/firebase.js";
+import { garantirUsuario } from "./js/plano.js";
 
 const botao = document.querySelector(".btn-primary");
 
@@ -98,6 +132,11 @@ document.getElementById("formCadastro").addEventListener("submit", async (e) => 
       displayName: nome
     });
 
+    // 💎 Cria o documento de plano (usuarios/{uid}) já no cadastro, sempre
+    // começando no plano "free". Ver js/plano.js para detalhes do sistema
+    // de planos Free/Premium.
+    await garantirUsuario(userCredential.user);
+
     alert("Conta criada com sucesso!");
     window.location.href = "login.html";
 
@@ -106,27 +145,34 @@ document.getElementById("formCadastro").addEventListener("submit", async (e) => 
   }
 });
 
+// ================= 🔐 CADASTRO COM GOOGLE =================
+// IMPORTANTE: para isso funcionar, o provedor "Google" precisa estar
+// habilitado em Firebase Console > Authentication > Sign-in method.
+// signInWithPopup cria a conta automaticamente se ela ainda não existir
+// (não precisa de um formulário de cadastro separado) e já autentica o
+// usuário — por isso vamos direto para index.html, sem passar por
+// login.html depois.
+const googleProvider = new GoogleAuthProvider();
+const btnGoogleCadastro = document.getElementById("btnGoogleCadastro");
 
+btnGoogleCadastro.addEventListener("click", async () => {
+  btnGoogleCadastro.disabled = true;
 
-const senhaInput = document.getElementById("senha");
-const toggleSenha = document.getElementById("toggleSenha");
-const eyeIcon = document.getElementById("eyeIcon");
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
 
-toggleSenha.addEventListener("click", () => {
-  const escondida = senhaInput.type === "password";
+    // 💎 cria o documento de plano "free" também para contas via Google
+    await garantirUsuario(result.user);
 
-  senhaInput.type = escondida ? "text" : "password";
+    window.location.href = "index.html";
 
-  if (escondida) {
-    eyeIcon.classList.remove("fa-eye-slash");
-    eyeIcon.classList.add("fa-eye");
-  } else {
-    eyeIcon.classList.remove("fa-eye");
-    eyeIcon.classList.add("fa-eye-slash");
+  } catch (error) {
+    if (error.code !== "auth/popup-closed-by-user") {
+      alert("Erro ao cadastrar com Google: " + error.message);
+    }
+    btnGoogleCadastro.disabled = false;
   }
 });
-
-
 </script>
 </body>
 

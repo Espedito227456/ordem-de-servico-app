@@ -1,0 +1,85 @@
+// ============================================================================
+// firestore.rules
+// ----------------------------------------------------------------------------
+// Regras de segurança do Firestore para o App Ordem de Serviço.
+//
+// POR QUE ISSO É IMPORTANTE (leia antes de ignorar este arquivo):
+// O app hoje confia no filtro `where("uid", "==", user.uid)` feito dentro do
+// próprio código JavaScript das páginas (clientes.html, nova-os.html, etc.)
+// para que cada usuário veja só os seus dados. Isso é ótimo para a
+// experiência normal de uso, MAS não impede que alguém com conhecimento
+// técnico abra o console do navegador e chame a API do Firestore
+// diretamente pedindo os dados de OUTRO usuário, ou edite o próprio campo
+// "plano" para "premium" sem pagar — a menos que existam regras de
+// segurança no servidor. É isso que este arquivo faz.
+//
+// COMO PUBLICAR ESTAS REGRAS (escolha uma opção):
+//   A) Painel (mais simples): Firebase Console > Firestore Database > Rules
+//      > cole o conteúdo deste arquivo > Publish.
+//   B) CLI: com o Firebase CLI instalado e autenticado neste projeto,
+//      rode `firebase deploy --only firestore:rules`
+//      (os arquivos firebase.json e .firebaserc na raiz já apontam para
+//      este arquivo e para o projeto "ordem-servico-app-bb6a8").
+//
+// Sem publicar este arquivo, o projeto pode estar rodando com as regras
+// padrão/de teste do Firebase (geralmente liberadas demais ou bloqueando
+// tudo) — confira sempre o que está publicado no Console.
+// ============================================================================
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ------------------------------------------------------------------
+    // usuarios/{uid}  -> dados de plano (free/premium) de cada usuário.
+    // ------------------------------------------------------------------
+    match /usuarios/{uid} {
+      // Cada usuário só pode ler o PRÓPRIO documento de plano.
+      allow read: if request.auth != null && request.auth.uid == uid;
+
+      // Criação do próprio documento (feita por garantirUsuario em
+      // js/plano.js) — só pode criar com plano "free". Isso impede que
+      // alguém crie o próprio documento já como "premium".
+      allow create: if request.auth != null
+                    && request.auth.uid == uid
+                    && request.resource.data.plano == 'free';
+
+      // Atualização: o usuário pode atualizar seus dados (ex: nome),
+      // MAS NUNCA o campo "plano" nem "premiumExpiraEm" — esses dois só
+      // podem ser alterados pelo Firebase Console (upgrade manual) ou por
+      // um backend com Admin SDK (ex: Cloud Function validando pagamento).
+      allow update: if request.auth != null
+                    && request.auth.uid == uid
+                    && request.resource.data.plano == resource.data.plano
+                    && request.resource.data.premiumExpiraEm == resource.data.premiumExpiraEm;
+    }
+
+    // ------------------------------------------------------------------
+    // clientes/{id}  -> cada cliente pertence a um uid (dono).
+    // ------------------------------------------------------------------
+    match /clientes/{id} {
+      allow read, update, delete: if request.auth != null
+                                   && request.auth.uid == resource.data.uid;
+
+      allow create: if request.auth != null
+                    && request.auth.uid == request.resource.data.uid;
+    }
+
+    // ------------------------------------------------------------------
+    // ordens/{id}  -> cada Ordem de Serviço pertence a um uid (dono).
+    // ------------------------------------------------------------------
+    match /ordens/{id} {
+      allow read, update, delete: if request.auth != null
+                                   && request.auth.uid == resource.data.uid;
+
+      allow create: if request.auth != null
+                    && request.auth.uid == request.resource.data.uid;
+    }
+
+    // Qualquer outra coleção não prevista acima fica bloqueada por padrão.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

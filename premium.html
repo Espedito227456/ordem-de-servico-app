@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Premium</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <!-- CSS próprio -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="bg-gray-100 text-gray-800">
+
+  <!-- HEADER (mesmo padrão visual das outras páginas) -->
+  <header class="bg-blue-600 text-white p-4 shadow-md flex items-center justify-between">
+    <a href="index.html" class="text-white">
+      <i class="fa fa-arrow-left"></i>
+    </a>
+    <h1 class="text-lg font-bold">
+      <i class="fa-solid fa-star text-yellow-300"></i>
+      Premium
+    </h1>
+    <div></div>
+  </header>
+
+  <main class="p-4 max-w-xl mx-auto">
+
+    <!-- STATUS ATUAL DO PLANO -->
+    <section id="statusPlano" class="bg-white rounded-xl shadow p-4 mb-5 text-center">
+      <p class="text-sm text-gray-500">Carregando seu plano...</p>
+    </section>
+
+    <!-- COMPARATIVO DE PLANOS -->
+    <section class="grid grid-cols-2 gap-3 mb-6">
+
+      <!-- GRÁTIS -->
+      <article class="bg-white rounded-xl shadow p-4">
+        <h2 class="font-bold text-center mb-3">Grátis</h2>
+        <ul class="text-sm space-y-2 text-gray-600">
+          <li><i class="fa-solid fa-check text-green-500 mr-1"></i> Até <span id="limiteClientesTexto">15</span> clientes</li>
+          <li><i class="fa-solid fa-check text-green-500 mr-1"></i> Até <span id="limiteOsTexto">10</span> OS/mês</li>
+          <li><i class="fa-solid fa-check text-green-500 mr-1"></i> Recibo em PDF (c/ marca d'água)</li>
+          <li><i class="fa-solid fa-check text-green-500 mr-1"></i> Dashboard financeiro básico</li>
+          <li><i class="fa-solid fa-xmark text-red-400 mr-1"></i> Contém anúncios</li>
+        </ul>
+      </article>
+
+      <!-- PREMIUM -->
+      <article class="bg-gradient-to-b from-blue-600 to-blue-700 text-white rounded-xl shadow p-4">
+        <h2 class="font-bold text-center mb-3">
+          <i class="fa-solid fa-star text-yellow-300"></i> Premium
+        </h2>
+        <ul class="text-sm space-y-2">
+          <li><i class="fa-solid fa-check text-green-300 mr-1"></i> Clientes ilimitados</li>
+          <li><i class="fa-solid fa-check text-green-300 mr-1"></i> OS ilimitadas por mês</li>
+          <li><i class="fa-solid fa-check text-green-300 mr-1"></i> Recibo em PDF sem marca d'água</li>
+          <li><i class="fa-solid fa-check text-green-300 mr-1"></i> Exportar relatório em CSV</li>
+          <li><i class="fa-solid fa-check text-green-300 mr-1"></i> Sem anúncios</li>
+        </ul>
+      </article>
+
+    </section>
+
+    <!-- ROADMAP (transparência: o que ainda vem por aí) -->
+    <section class="bg-white rounded-xl shadow p-4 mb-6">
+      <p class="font-semibold mb-2 text-sm">
+        <i class="fa-solid fa-road text-blue-500"></i>
+        Em breve para assinantes Premium
+      </p>
+      <ul class="text-sm text-gray-500 space-y-1">
+        <li>• Cobrança via Pix integrada à Ordem de Serviço</li>
+        <li>• Assinatura digital do cliente na tela</li>
+        <li>• Fotos de antes/depois anexadas à OS</li>
+        <li>• Lembretes de manutenção/retorno do cliente</li>
+      </ul>
+    </section>
+
+    <!-- PLANOS / CTA -->
+    <section class="space-y-3 mb-6">
+
+      <button onclick="iniciarAssinatura('mensal')"
+        id="btnMensal"
+        class="w-full bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-xl shadow-md text-left active:scale-95 transition">
+        <p class="font-bold">Plano Mensal</p>
+        <p class="text-sm opacity-90" id="precoMensal">R$ 19,90/mês</p>
+      </button>
+
+      <button onclick="iniciarAssinatura('anual')"
+        id="btnAnual"
+        class="w-full bg-yellow-500 hover:bg-yellow-600 text-white p-4 rounded-xl shadow-md text-left active:scale-95 transition">
+        <p class="font-bold">Plano Anual <span class="bg-white text-yellow-600 text-xs px-2 py-0.5 rounded-full ml-1">melhor custo</span></p>
+        <p class="text-sm opacity-90" id="precoAnual">R$ 199,90/ano</p>
+      </button>
+
+    </section>
+
+    <!-- COMO FUNCIONA O UPGRADE (transparência sobre o processo manual) -->
+    <section class="text-center text-xs text-gray-500 mb-6">
+      <p>
+        <i class="fa-solid fa-circle-info"></i>
+        Ao assinar, você fala diretamente com nossa equipe para confirmar o
+        pagamento. O acesso Premium é liberado em poucas horas após a
+        confirmação.
+      </p>
+    </section>
+
+  </main>
+
+  <footer class="text-center text-sm text-gray-500 p-4">
+    <p>&copy; 2026 App OS</p>
+  </footer>
+
+  <script type="module">
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { auth } from "./js/firebase.js";
+import {
+  garantirUsuario,
+  obterDadosUsuario,
+  isPremium,
+  LIMITES_FREE,
+  PRECOS_PREMIUM
+} from "./js/plano.js";
+
+// ============================================================================
+// CONTATO DE VENDAS (preencha para ativar o funil de assinatura)
+// ----------------------------------------------------------------------------
+// Enquanto não existe um gateway de pagamento automático (Google Play
+// Billing / Stripe / Mercado Pago — ver README para o passo a passo de
+// integração futura), a assinatura é vendida manualmente: o botão abaixo
+// abre uma conversa de WhatsApp (ou e-mail) já com os dados do usuário, para
+// combinar o pagamento (ex: Pix). Depois de confirmado, libere o Premium
+// manualmente em Firebase Console > Firestore > usuarios/{uid} > plano =
+// "premium" (ver comentários em js/plano.js).
+// ============================================================================
+const CONTATO = {
+  whatsapp: "", // preencha com DDI+DDD+número, só dígitos. Ex: "5511999999999"
+  email: ""     // preencha com o seu e-mail de vendas/suporte
+};
+
+let usuarioAtual = null;
+let dadosUsuarioAtual = null;
+
+document.getElementById("limiteClientesTexto").textContent = LIMITES_FREE.maxClientes;
+document.getElementById("limiteOsTexto").textContent = LIMITES_FREE.maxOsPorMes;
+document.getElementById("precoMensal").textContent = PRECOS_PREMIUM.mensal;
+document.getElementById("precoAnual").textContent = PRECOS_PREMIUM.anual;
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  usuarioAtual = user;
+
+  // idempotente: cria o doc de plano se ainda não existir (ex: conta antiga)
+  await garantirUsuario(user);
+  dadosUsuarioAtual = await obterDadosUsuario(user.uid);
+
+  atualizarStatusPlano();
+});
+
+function atualizarStatusPlano() {
+  const el = document.getElementById("statusPlano");
+  const premium = isPremium(dadosUsuarioAtual);
+
+  if (premium) {
+    const expira = dadosUsuarioAtual?.premiumExpiraEm?.toDate
+      ? dadosUsuarioAtual.premiumExpiraEm.toDate()
+      : dadosUsuarioAtual?.premiumExpiraEm;
+
+    el.innerHTML = `
+      <p class="text-green-600 font-bold">
+        <i class="fa-solid fa-circle-check"></i> Você já é Premium!
+      </p>
+      <p class="text-sm text-gray-500 mt-1">
+        ${expira ? `Válido até ${new Date(expira).toLocaleDateString("pt-BR")}` : "Sem data de expiração"}
+      </p>
+    `;
+
+    // some com os botões de assinatura, já que o usuário já é premium
+    document.getElementById("btnMensal").classList.add("hidden");
+    document.getElementById("btnAnual").classList.add("hidden");
+  } else {
+    el.innerHTML = `
+      <p class="font-bold text-gray-700">Você está no plano Grátis</p>
+      <p class="text-sm text-gray-500 mt-1">Assine o Premium e desbloqueie tudo abaixo 👇</p>
+    `;
+  }
+}
+
+// Chamada pelos botões "Plano Mensal" / "Plano Anual" (onclick inline, por
+// isso precisa estar em `window` — mesmo padrão já usado em outras páginas
+// do app, ex: window.deletarCliente em clientes.html).
+window.iniciarAssinatura = function (plano) {
+  const precoTexto = plano === "anual" ? PRECOS_PREMIUM.anual : PRECOS_PREMIUM.mensal;
+  const email = usuarioAtual?.email || "(faça login primeiro)";
+
+  const mensagem = encodeURIComponent(
+    `Olá! Quero assinar o plano Premium (${plano} - ${precoTexto}).\nMeu e-mail de login: ${email}`
+  );
+
+  if (CONTATO.whatsapp) {
+    window.open(`https://wa.me/${CONTATO.whatsapp}?text=${mensagem}`, "_blank");
+    return;
+  }
+
+  if (CONTATO.email) {
+    window.location.href = `mailto:${CONTATO.email}?subject=Assinatura Premium&body=${mensagem}`;
+    return;
+  }
+
+  alert(
+    "Pagamento automático ainda não configurado.\n\n" +
+    "Para habilitar: preencha CONTATO.whatsapp ou CONTATO.email no script " +
+    "de premium.html. Veja o README para o passo a passo completo de como " +
+    "ativar a assinatura (manual ou via gateway de pagamento)."
+  );
+};
+</script>
+
+</body>
+</html>

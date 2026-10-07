@@ -56,13 +56,19 @@
     <!-- LISTA -->
     <section aria-labelledby="lista-clientes" class="mt-6">
 
-      <h2 id="lista-clientes" class="text-md font-semibold mb-3">
+      <h2 id="lista-clientes" class="text-md font-semibold mb-1">
         Lista de Clientes
       </h2>
+
+      <!-- 💎 indicador de uso do limite do plano grátis (ver js/plano.js) -->
+      <p id="infoLimiteClientes" class="text-xs text-gray-500 mb-3"></p>
 
       <ul id="listaClientes"></ul>
 
     </section>
+
+    <!-- 📢 Banner de anúncio (some automaticamente para usuários Premium) -->
+    <div id="ad-container" class="hidden mt-4"></div>
 
   </main>
 
@@ -72,10 +78,7 @@
   </footer>
   
   <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-
 import {
-  getFirestore,
   collection,
   addDoc,
   getDocs,
@@ -85,38 +88,40 @@ import {
   where
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
+// 🔥 Firebase + sistema de planos/anúncios centralizados (ver pasta js/)
+import { auth, db } from "./js/firebase.js";
 import {
-  getAuth,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-
-// ================= FIREBASE =================
-const firebaseConfig = {
-  apiKey: "AIzaSyAbWh3GANf73czwQiWny94LJYPqlodZjAg",
-  authDomain: "ordem-servico-app-bb6a8.firebaseapp.com",
-  projectId: "ordem-servico-app-bb6a8",
-  storageBucket: "ordem-servico-app-bb6a8.firebasestorage.app",
-  messagingSenderId: "652244504112",
-  appId: "1:652244504112:web:d68e0de5cc78245f0be7f5"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
+  garantirUsuario,
+  obterDadosUsuario,
+  verificarLimiteClientes,
+  alertarLimiteAtingido
+} from "./js/plano.js";
+import { renderAdBanner } from "./js/ads.js";
 
 let currentUser = null;
+let dadosUsuarioAtual = null; // 💎 cache do documento usuarios/{uid} (plano atual)
 
 console.log("🔥 Firebase pronto");
 
 // ================= AUTH =================
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   if (!user) {
     window.location.href = "login.html";
     return;
   }
 
   currentUser = user;
+
+  // 💎 garante o doc de plano e carrega os dados (idempotente)
+  await garantirUsuario(user);
+  dadosUsuarioAtual = await obterDadosUsuario(user.uid);
+
+  renderAdBanner("ad-container", dadosUsuarioAtual);
+
   listarClientes();
+  atualizarInfoLimite();
 });
 
 // ================= SALVAR =================
@@ -128,6 +133,18 @@ async function salvarCliente(nome, telefone, endereco) {
     criadoEm: new Date(),
     uid: currentUser.uid // 🔥 ESSENCIAL
   });
+}
+
+// ================= 💎 LIMITE DO PLANO GRÁTIS =================
+// Atualiza o texto "X/15 clientes (grátis)" acima da lista. Usuários
+// Premium veem apenas "Clientes cadastrados: X" (sem limite).
+async function atualizarInfoLimite() {
+  const info = document.getElementById("infoLimiteClientes");
+  const { usado, limite } = await verificarLimiteClientes(currentUser.uid, dadosUsuarioAtual);
+
+  info.textContent = Number.isFinite(limite)
+    ? `${usado}/${limite} clientes usados (plano grátis)`
+    : `${usado} clientes cadastrados (ilimitado · Premium)`;
 }
 
 // ================= LISTAR =================
@@ -169,6 +186,7 @@ async function deletarCliente(id) {
 
   await deleteDoc(doc(db, "clientes", id));
   listarClientes();
+  atualizarInfoLimite(); // 💎 libera espaço no limite do plano grátis
 }
 
 window.deletarCliente = deletarCliente;
@@ -176,6 +194,16 @@ window.deletarCliente = deletarCliente;
 // ================= FORM =================
 document.getElementById("formCliente").addEventListener("submit", async (e) => {
   e.preventDefault();
+
+  // 💎 bloqueia o cadastro se o plano grátis já atingiu o limite de clientes
+  const limite = await verificarLimiteClientes(currentUser.uid, dadosUsuarioAtual);
+
+  if (!limite.permitido) {
+    alertarLimiteAtingido(
+      `Você atingiu o limite de ${limite.limite} clientes do plano grátis.`
+    );
+    return;
+  }
 
   const nome = document.getElementById("nome").value;
   const telefone = document.getElementById("telefone").value;
@@ -185,6 +213,7 @@ document.getElementById("formCliente").addEventListener("submit", async (e) => {
 
   e.target.reset();
   listarClientes();
+  atualizarInfoLimite();
 });
 </script>
 

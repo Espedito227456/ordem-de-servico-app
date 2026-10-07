@@ -110,6 +110,17 @@ body {
   background: #4b5563;
 }
 
+/* ===== BOTÃO PREMIUM (upsell) ===== */
+/* Usado no menu principal e em listas para destacar o link/CTA do plano
+   Premium das demais ações (que usam o azul padrão de .btn). */
+.btn-premium {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.btn-premium:hover {
+  background: linear-gradient(135deg, #d97706, #b45309);
+}
+
 /* ===== AÇÕES ===== */
 .form-actions {
   display: flex;

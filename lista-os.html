@@ -9,6 +9,9 @@
 
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <!-- 💎 jsPDF: usado para gerar o recibo em PDF (ver js/pdf.js) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 
 <body class="bg-gray-100 text-gray-800">
@@ -31,6 +34,9 @@
     Nenhuma ordem de serviço cadastrada.
   </p>
 
+  <!-- 📢 Banner de anúncio (some automaticamente para usuários Premium) -->
+  <div id="ad-container" class="hidden mt-4"></div>
+
 </main>
 
 <footer class="text-center text-sm text-gray-500 p-4">
@@ -40,9 +46,7 @@
 <!-- ================= FIREBASE + JS ================= -->
 <script type="module">
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
-  getFirestore,
   collection,
   getDocs,
   getDoc,
@@ -52,7 +56,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 
-import { getAuth, onAuthStateChanged } 
+import { onAuthStateChanged } 
 from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
 import { query, where } 
@@ -61,23 +65,14 @@ from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { serverTimestamp } 
 from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-
-
-// 🔥 CONFIG FIREBASE
-const firebaseConfig = {
-  apiKey: "AIzaSyAbWh3GANf73czwQiWny94LJYPqlodZjAg",
-  authDomain: "ordem-servico-app-bb6a8.firebaseapp.com",
-  projectId: "ordem-servico-app-bb6a8",
-  storageBucket: "ordem-servico-app-bb6a8.firebasestorage.app",
-  messagingSenderId: "652244504112",
-  appId: "1:652244504112:web:d68e0de5cc78245f0be7f5"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+// 🔥 Firebase + sistema de planos/anúncios/PDF centralizados (ver pasta js/)
+import { auth, db } from "./js/firebase.js";
+import { garantirUsuario, obterDadosUsuario, isPremium } from "./js/plano.js";
+import { renderAdBanner } from "./js/ads.js";
+import { gerarReciboPDF } from "./js/pdf.js";
 
 let currentUser = null;
+let dadosUsuarioAtual = null; // 💎 cache do documento usuarios/{uid} (plano atual)
 
 
 console.log("🔥 Firebase OS conectado");
@@ -183,6 +178,12 @@ if (os.status === "cancelada") {
   Editar
 </button>
 
+    <!-- 💎 RECIBO EM PDF (marca d'água removida no plano Premium) -->
+    <button onclick="gerarRecibo('${id}')"
+      class="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded-lg text-sm shadow">
+      <i class="fa-solid fa-file-pdf"></i> Recibo
+    </button>
+
   </div>
 `;
 
@@ -191,7 +192,7 @@ if (os.status === "cancelada") {
 }
 
 // inicia
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
 
   if (!user) {
     window.location.href = "login.html";
@@ -200,8 +201,29 @@ onAuthStateChanged(auth, (user) => {
   
   currentUser = user;
 
+  // 💎 garante o doc de plano e carrega os dados (idempotente)
+  await garantirUsuario(user);
+  dadosUsuarioAtual = await obterDadosUsuario(user.uid);
+
+  renderAdBanner("ad-container", dadosUsuarioAtual);
+
   listarOS(user);
 });
+
+// ================= 💎 RECIBO EM PDF =================
+async function gerarRecibo(id) {
+  const docRef = doc(db, "ordens", id);
+  const snapshot = await getDoc(docRef);
+
+  if (!snapshot.exists()) {
+    alert("OS não encontrada");
+    return;
+  }
+
+  gerarReciboPDF(snapshot.data(), dadosUsuarioAtual, isPremium(dadosUsuarioAtual));
+}
+
+window.gerarRecibo = gerarRecibo;
 
 // =================FUNCAO MUDAR STATUS ================
 

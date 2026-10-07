@@ -47,14 +47,23 @@
 </article>
 </section>
 
-<!-- FILTRO -->
-<select id="filtroPeriodo" class="mb-4 p-2 border rounded">
-  <option value="dia">Diário</option>
-  <option value="semana">Semanal</option>
-  <option value="quinzena">Quinzenal</option>
-  <option value="mes">Mensal</option>
-  <option value="ano">Anual</option>
-</select>
+<!-- FILTRO + 💎 EXPORTAÇÃO (Premium) -->
+<div class="flex items-center gap-2 mb-4">
+  <select id="filtroPeriodo" class="p-2 border rounded flex-1">
+    <option value="dia">Diário</option>
+    <option value="semana">Semanal</option>
+    <option value="quinzena">Quinzenal</option>
+    <option value="mes">Mensal</option>
+    <option value="ano">Anual</option>
+  </select>
+
+  <!-- Recurso Premium: usuários do plano grátis recebem um convite para
+       assinar ao clicar (ver exportarCSV() no script abaixo). -->
+  <button id="btnExportarCSV"
+    class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg shadow text-sm whitespace-nowrap">
+    📄 Exportar CSV
+  </button>
+</div>
 
 <!-- GRÁFICOS -->
 <section class="space-y-5">
@@ -71,12 +80,14 @@
 
 </section>
 
+<!-- 📢 Banner de anúncio (some automaticamente para usuários Premium) -->
+<div id="ad-container" class="hidden mt-5"></div>
+
 <!-- FIREBASE -->
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-import { getAuth, onAuthStateChanged } 
+import { onAuthStateChanged } 
 from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
 import { query, where } 
@@ -84,6 +95,11 @@ from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import { updateDoc, doc, serverTimestamp } 
 from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+// 🔥 Firebase + sistema de planos/anúncios centralizados (ver pasta js/)
+import { auth, db } from "./js/firebase.js";
+import { garantirUsuario, obterDadosUsuario, isPremium, alertarLimiteAtingido } from "./js/plano.js";
+import { renderAdBanner } from "./js/ads.js";
 
 async function concluirOS(id) {
   const docRef = doc(db, "ordens", id);
@@ -94,28 +110,15 @@ async function concluirOS(id) {
   });
 }
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAbWh3GANf73czwQiWny94LJYPqlodZjAg",
-  authDomain: "ordem-servico-app-bb6a8.firebaseapp.com",
-  projectId: "ordem-servico-app-bb6a8",
-  storageBucket: "ordem-servico-app-bb6a8.firebasestorage.app",
-  messagingSenderId: "652244504112",
-  appId: "1:652244504112:web:d68e0de5cc78245f0be7f5"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
 let pizzaChart;
 let barChart;
 
 
 /* INIT */
-const auth = getAuth(app);
-
 let usuarioLogado = null;
+let dadosUsuarioAtual = null; // 💎 cache do documento usuarios/{uid} (plano atual)
 
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
 
   if (!user) {
     window.location.href = "login.html";
@@ -124,11 +127,64 @@ onAuthStateChanged(auth, (user) => {
 
   usuarioLogado = user;
 
+  // 💎 garante o doc de plano e carrega os dados (idempotente)
+  await garantirUsuario(user);
+  dadosUsuarioAtual = await obterDadosUsuario(user.uid);
+
+  renderAdBanner("ad-container", dadosUsuarioAtual);
+
   carregarDashboard();
 });
 
 document.getElementById("filtroPeriodo").addEventListener("change", () => {
   carregarDashboard();
+});
+
+// ================= 💎 EXPORTAR CSV (recurso Premium) =================
+// Gera um CSV com todas as OS do usuário (bom para contador/Imposto de
+// Renda). Usuários do plano grátis recebem o convite de upgrade.
+document.getElementById("btnExportarCSV").addEventListener("click", async () => {
+
+  if (!isPremium(dadosUsuarioAtual)) {
+    alertarLimiteAtingido("Exportar relatório em CSV é um recurso exclusivo do plano Premium.");
+    return;
+  }
+
+  const q = query(collection(db, "ordens"), where("uid", "==", usuarioLogado.uid));
+  const snapshot = await getDocs(q);
+
+  const cabecalho = ["Titulo", "Cliente", "Descricao", "Execucao", "Valor", "Status", "CriadaEm", "ConcluidaEm"];
+  const linhas = [cabecalho];
+
+  snapshot.forEach((docItem) => {
+    const os = docItem.data();
+
+    linhas.push([
+      os.titulo || "",
+      os.cliente || "",
+      os.descricao || "",
+      os.execucao || "",
+      Number(os.valor || 0).toFixed(2),
+      os.status || "",
+      os.createdAt?.toDate?.().toLocaleString("pt-BR") || "",
+      os.completedAt?.toDate?.().toLocaleString("pt-BR") || ""
+    ]);
+  });
+
+  // escapa aspas/vírgulas de cada célula para gerar um CSV válido
+  const csv = linhas
+    .map((linha) => linha.map((celula) => `"${String(celula).replace(/"/g, '""')}"`).join(";"))
+    .join("\n");
+
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `relatorio-os-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+
+  URL.revokeObjectURL(url);
 });
 
 /* DASHBOARD */
